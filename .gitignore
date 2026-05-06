@@ -1,0 +1,30 @@
+# Java part
+.classpath
+.project
+.settings/
+.metadata/
+
+# VS Code
+.vscode/
+
+# Compiled
+bin/
+out/
+*.class
+
+# Trained models and runtime database
+DownloadedModels/
+TrainedModels/
+database.xml
+Client.jar
+Client.bat
+Server.jar
+Server.bat
+
+
+# Python part
+__pycache__/
+.venv
+
+
+

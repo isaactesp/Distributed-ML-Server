@@ -1,0 +1,140 @@
+package Framework.Server;
+import Framework.Domain.DatasetInsertRequest;
+import java.io.File;
+import java.io.IOException;
+import java.util.concurrent.*;
+import javax.xml.parsers.*;
+import javax.xml.transform.*;
+import javax.xml.transform.dom.DOMSource;
+import javax.xml.transform.stream.StreamResult;
+import org.w3c.dom.*;
+import org.xml.sax.SAXException;
+
+
+/**
+ * Handles insertion of a new record into a dataset XML file in a thread-safe way.
+ *
+ * Each instance receives a {@link DatasetInsertRequest} and appends a new
+ * <record> element into the corresponding XML dataset file. Concurrent access
+ * to the same dataset file is synchronized using an internal lock map so that
+ * multiple threads can safely insert into different datasets in parallel.
+ */
+public class DatasetInserterThread implements Runnable{
+	
+	private DatasetInsertRequest inRequest;
+
+	// To manage the synchronized access to the datasets files
+	private static final ConcurrentHashMap<String, Object> fileLocks = new ConcurrentHashMap<>();
+
+	/**
+	 * Constructs a DatasetInserterThread for the provided insert request.
+	 *
+	 * @param inRequest the DatasetInsertRequest containing the target dataset name
+	 *                  and the student record to insert
+	 */
+	public DatasetInserterThread(DatasetInsertRequest inRequest) {
+		this.inRequest = inRequest;
+	}
+	
+	/**
+	 * Performs the insertion by loading the target XML file, creating a new
+	 * <record> element populated with the student's fields and saving the
+	 * document. The method synchronizes on a per-file lock to prevent
+	 * concurrent writes to the same dataset file.
+	 */
+	public void run() {
+
+		String fileName = this.inRequest.getDatasetName();
+		Object lock = fileLocks.get(fileName);
+		// If the lock does not exist, create it and put it in the map
+		if (lock == null) {
+			lock = new Object();
+			// Thread-safe operation thanks to ConcurrentHashMap
+			Object existingLock = fileLocks.putIfAbsent(fileName, lock);
+			if (existingLock != null) {
+				lock = existingLock;
+			}
+		}
+
+		synchronized(lock) {
+			try {
+				File dataset = new File("Datasets\\" +this.inRequest.getDatasetName());
+				DocumentBuilderFactory dbf = DocumentBuilderFactory.newInstance();
+				dbf.setIgnoringElementContentWhitespace(true);
+				DocumentBuilder db = dbf.newDocumentBuilder();
+				Document datasetXML = db.parse(dataset);
+				
+				Element root = datasetXML.getDocumentElement();
+
+				// Remove the first record, so the datasets keep updated with the latest
+				// records. Plust, it mantains the size. 
+				NodeList records = root.getElementsByTagName("record");
+				if(records.getLength() >0){
+					Node firstRecord =records.item(0); 
+					Node previousSibling = firstRecord.getPreviousSibling();
+                    if (previousSibling != null && previousSibling.getNodeType() == Node.TEXT_NODE) {
+                        root.removeChild(previousSibling); 
+                    }
+                    root.removeChild(firstRecord);
+				}
+
+				Element newRecord = datasetXML.createElement("record");
+				
+				Element country = datasetXML.createElement("Country_of_Origin");
+				country.setTextContent(this.inRequest.getStudent().getCountry().name());
+				newRecord.appendChild(country);
+				
+				Element education = datasetXML.createElement("Education_Level");
+				education.setTextContent(this.inRequest.getStudent().getEducationalLevel().name());
+				newRecord.appendChild(education);
+				
+				Element field = datasetXML.createElement("Field_of_Study");
+				field.setTextContent(this.inRequest.getStudent().getFieldOfStudy().name());
+				newRecord.appendChild(field);
+				
+				Element language = datasetXML.createElement("Language_Proficiency");
+				language.setTextContent(this.inRequest.getStudent().getEnglishProficiency().name());
+				newRecord.appendChild(language);
+				
+				Element  gender = datasetXML.createElement("Gender");
+				gender.setTextContent(this.inRequest.getStudent().getGender().name());
+				newRecord.appendChild(gender);
+				
+				Element age = datasetXML.createElement("Age");
+				age.setTextContent(String.valueOf(this.inRequest.getStudent().getAge()));
+				newRecord.appendChild(age);
+				
+				Element internship = datasetXML.createElement("Internship_Experience");
+				internship.setTextContent(String.valueOf(this.inRequest.getStudent().getInternshipExperience()));
+				newRecord.appendChild(internship);
+				
+				Element salary = datasetXML.createElement("Salary");
+				salary.setTextContent(String.valueOf(this.inRequest.getStudent().getSalary()));
+				newRecord.appendChild(salary);
+				
+				Element gpa = datasetXML.createElement("GPA_10");
+				gpa.setTextContent(String.valueOf(this.inRequest.getStudent().getGpa()));
+				newRecord.appendChild(gpa);
+				
+				root.appendChild(newRecord);
+				
+				// Save the updated 
+				TransformerFactory transformerFactory = TransformerFactory.newInstance();
+				Transformer transformer = transformerFactory.newTransformer();
+				transformer.setOutputProperty(OutputKeys.INDENT, "yes");
+				transformer.setOutputProperty(OutputKeys.DOCTYPE_SYSTEM, "dataset.dtd");
+				transformer.setOutputProperty("{http://xml.apache.org/xslt}indent-amount", "2");
+				DOMSource source = new DOMSource(datasetXML);
+				StreamResult result = new StreamResult(dataset);
+				transformer.transform(source, result);
+				
+				
+			}catch(ParserConfigurationException | IOException | SAXException |  TransformerException e) {
+				e.printStackTrace();
+			}
+		}
+	}
+}
+	
+
+
