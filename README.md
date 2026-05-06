@@ -54,9 +54,10 @@ Short description of the repository contents
 
 
 ## Future improvements
-- Change the routes to the python scripts, so the server can be launched from Linux and Windows
-environment(now it has Windows routes).
-- Split the server workload in different nodes depending on the amount of users connected. So
-the server doesn't get overloaded. 
+- **Cross-Platform Compatibility:** Update script paths and execution logic to fully support both Linux and Windows environments without manual configuration.
+- **Dynamic Scalability:** Implement a load-balancing mechanism to distribute the server workload across multiple worker nodes based on real-time user demand.
+- **Containerization:** Provide Docker and Docker Compose configurations for easy, consistent deployment of the entire framework (Java server, Python environment, and datasets).
+- **Web Dashboard:** Develop a web-based interface to monitor training progress, visualize model metrics (accuracy, precision, recall), and manage system resources.
+- **Automated Model Versioning:** Implement a system to track, version, and compare different trained models and their respective performance over time.
 
 
